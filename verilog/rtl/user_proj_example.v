@@ -104,62 +104,82 @@ module user_proj_example #(
     assign clk = (~la_oenb[64]) ? la_data_in[64]: wb_clk_i;
     assign rst = (~la_oenb[65]) ? la_data_in[65]: wb_rst_i;
 
-    counter #(
-        .BITS(BITS)
-    ) counter(
-        .clk(clk),
-        .reset(rst),
-        .ready(wbs_ack_o),
-        .valid(valid),
-        .rdata(rdata),
-        .wdata(wbs_dat_i),
-        .wstrb(wstrb),
-        .la_write(la_write),
-        .la_input(la_data_in[63:32]),
-        .count(count)
-    );
+//IIR dut(.clk(clk),.reset(rst),.a(rdata[3:0]),.x(rdata[7:3]),.y(count[3:0]));
+IIR dut(clk,rst,a,x,y);
 
 endmodule
 
-module counter #(
-    parameter BITS = 32
-)(
-    input clk,
-    input reset,
-    input valid,
-    input [3:0] wstrb,
-    input [BITS-1:0] wdata,
-    input [BITS-1:0] la_write,
-    input [BITS-1:0] la_input,
-    output ready,
-    output [BITS-1:0] rdata,
-    output [BITS-1:0] count
-);
-    reg ready;
-    reg [BITS-1:0] count;
-    reg [BITS-1:0] rdata;
 
-    always @(posedge clk) begin
-        if (reset) begin
-            count <= 0;
-            ready <= 0;
-        end else begin
-            ready <= 1'b0;
-            if (~|la_write) begin
-                count <= count + 1;
-            end
-            if (valid && !ready) begin
-                ready <= 1'b1;
-                rdata <= count;
-                if (wstrb[0]) count[7:0]   <= wdata[7:0];
-                if (wstrb[1]) count[15:8]  <= wdata[15:8];
-                if (wstrb[2]) count[23:16] <= wdata[23:16];
-                if (wstrb[3]) count[31:24] <= wdata[31:24];
-            end else if (|la_write) begin
-                count <= la_write & la_input;
-            end
-        end
-    end
+module IIR(clk,rst,a,x,y);
+input clk,rst;
+input [3:0]a,x;
+output [3:0]y; 
+reg [3:0]y_val;
+wire [7:0] baugh_prod_actual; 
+baugh_mult bm1(.a(a), .b(y_val), .p(baugh_prod_actual)); 
 
+
+always@*  //(posedge clk,rst,x,a)
+
+begin
+if (rst) begin 
+    y_val<= x;
+end
+else begin
+y_val<= x + booth_prod_actual[3:0];
+end
+end
+assign y = y_val;
+endmodule
+
+
+
+
+module baugh_mult(a, b, p);
+input [3:0] a, b;
+output [7:0] p; 
+supply1 one;
+wire w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14, w15, w16, w17, w18, w19, w20, w21, w22, w23;
+
+assign p[0] = a[0]&b[0];
+
+half_adder HA1(a[1]&b[0], a[0]&b[1], p[1], w1);
+half_adder HA2(a[2]&b[0], a[1]&b[1], w2, w3); 
+half_adder HA3(~(a[3]&b[0]), a[2]&b[1], w4, w5);
+
+full_adder FA1(w2, w1, a[0]&b[2], p[2],w6);
+full_adder FA2(w4, w3, a[1]&b[2], w7, w8);
+full_adder FA3(w5, a[2]&b[2], ~(a[3]&b[1]), w9, w10);
+
+full_adder FA4(w6, w7, ~(a[0]&b[3]), p[3], w11); 
+full_adder FA5(w8, w9, ~(a[1]&b[3]), w12, w13);
+full_adder FA6(w10, ~(a[2]&b[3]) , ~(a[3]&b[2]), w14,w15);
+
+full_adder FA7(one, w11, w12, p[4], w16); 
+half_adder HA4(w13, w14, w17, w18);
+half_adder HA5(a[3]&b[3], w15, w19, w20);
+
+half_adder HA6(w16,w17, p[5], w21);
+half_adder HA7(w18, w19, w22,w23);
+
+half_adder HA8(w21, w22,p[7], p[6]);
+
+endmodule
+
+
+
+module half_adder (x, y, s, cout);
+input x, y;
+output s, cout;
+assign s = x^y^cin;
+assign cout = (x&y) | (y&cin) | (x&cin);
+endmodule
+
+
+module full_adder (x, y, cin,s,cout);
+input x, y, cin;
+output s, cout;
+assign s = x^y;
+assign cout = x&y; 
 endmodule
 `default_nettype wire
