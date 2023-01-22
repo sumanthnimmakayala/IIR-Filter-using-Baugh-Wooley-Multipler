@@ -89,4 +89,3 @@ The  `README.md` describes all configuration variables for every stage and the t
  
  ![3](https://user-images.githubusercontent.com/113964084/201070735-201a8c44-14d3-4de7-8542-d3ca5a34beda.png)
  
-21. Printing statistics.
